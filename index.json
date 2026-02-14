@@ -1,0 +1,44 @@
+const express = require('express');
+const puppeteer = require('puppeteer');
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', async (req, res) => {
+  // Permetti a chiunque di chiamare questa API (CORS)
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Content-Type', 'application/json');
+
+  try {
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    const page = await browser.newPage();
+    
+    // Imposta User Agent reale
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+
+    // Vai alla pagina JSON (non HTML!) delle Olimpiadi
+    // Calcola data di oggi
+    const today = new Date().toISOString().split('T')[0];
+    const url = `https://www.olympics.com/wmr-owg2026/schedules/api/ITA/schedule/lite/day/${today}`;
+
+    // Intercetta la risposta
+    await page.goto(url, { waitUntil: 'networkidle0' });
+    
+    // Estrai il testo dal body (che è il JSON)
+    const content = await page.evaluate(() => document.body.innerText);
+    
+    await browser.close();
+    
+    // Restituisci il contenuto
+    res.send(content);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`App listening on port ${port}`);
+});
