@@ -1,12 +1,16 @@
 {
-  "name": "olimpiadi-scraper",
+  "name": "olimpiadi-proxy",
   "version": "1.0.0",
+  "description": "Proxy Puppeteer per Olimpiadi",
   "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "express": "^4.18.2",
     "puppeteer": "^21.5.0"
   },
-  "scripts": {
-    "start": "node index.js"
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
