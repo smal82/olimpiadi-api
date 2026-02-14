@@ -5,6 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', async (req, res) => {
+    // CORS: Permetti al tuo sito di accedere
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET');
     res.set('Content-Type', 'application/json');
@@ -15,23 +16,26 @@ app.get('/', async (req, res) => {
     try {
         console.log("Avvio Browser...");
         
+        // Avvia Puppeteer usando il Chrome scaricato localmente
+        // Non specifichiamo executablePath perché Puppeteer lo troverà da solo
+        // grazie alla variabile d'ambiente PUPPETEER_CACHE_DIR che hai impostato
         browser = await puppeteer.launch({
             headless: 'new',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--single-process',
+                '--single-process', // Ottimizzazione per container
                 '--no-zygote'
-            ],
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable'
+            ]
         });
 
         const page = await browser.newPage();
         
-        // Timeout più lungo (60s) per sicurezza
+        // Timeout di sicurezza
         page.setDefaultNavigationTimeout(60000);
 
+        // User Agent reale
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
         const today = new Date().toISOString().split('T')[0];
@@ -39,20 +43,21 @@ app.get('/', async (req, res) => {
 
         console.log(`Navigazione verso: ${targetUrl}`);
 
-        // Vai alla pagina. 'domcontentloaded' è più veloce di 'networkidle2' e spesso sufficiente per i JSON
+        // Vai all'URL
         await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
 
-        // Estrai il testo
+        // Estrai il testo del body (il JSON)
         const content = await page.evaluate(() => document.body.innerText);
 
         console.log("Dati estratti, lunghezza:", content.length);
 
-        // Controllo JSON
+        // Verifica veloce se è JSON
         try {
             JSON.parse(content);
             res.send(content);
         } catch (e) {
             console.error("Non è JSON:", content.substring(0, 100));
+            // Se fallisce, mandiamo comunque il contenuto parziale per debug
             res.status(500).json({ error: "Risposta non valida dal sito", partial: content.substring(0, 200) });
         }
 
@@ -62,6 +67,11 @@ app.get('/', async (req, res) => {
     } finally {
         if (browser) await browser.close();
     }
+});
+
+// Endpoint di Health Check (utile per Render)
+app.get('/health', (req, res) => {
+    res.send('OK');
 });
 
 app.listen(PORT, () => {
